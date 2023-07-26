@@ -50,15 +50,18 @@ class PeopleCounter():
         self.people_count = 0
         self.people = {}
 
+        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)) # Frame genişliği
+        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) # Frame yüksekliği
+
         # Frame üzerindeki çizgilerin y koordinatları 
         # Giriş çizgisi
         # Tüm videolar için aynı değerler kullanılabilir
-        self.enter_line_y = 50
+        self.enter_line_y = (self.height // 5)
 
         # Çıkış çizgisi
         # Tüm videolar için otomatik değer atanmalı
         #self.exit_line_y = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT) - 30
-        self.exit_line_y = 250
+        self.exit_line_y = self.height - self.enter_line_y
 
         self.offset = 6 # İnsanların çizgilerden geçerken hata payı
         self.counter_enter = 0 
@@ -99,6 +102,7 @@ class PeopleCounter():
         return threshold
     
     def drawLines(self, frame):
+
         # İnsanların giriş yapacağı çizgiyi çiz
         cv2.line(frame, (0, self.enter_line_y), (frame.shape[1], self.enter_line_y), (255, 0, 0), 2)
 
@@ -170,6 +174,8 @@ if __name__ == "__main__":
         ret, frame = people_counter.cap.read()
         if not ret:
             break
+
+        height, width = frame.shape[:2]
 
         count += 1
         if count % 3 != 0:
