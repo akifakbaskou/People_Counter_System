@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import pandas as pd
-import time
 import math
 
 class Tracker:
@@ -41,13 +40,10 @@ class Tracker:
 
         return objects_bbs_ids
 
-
 class PeopleCounter():
     def __init__(self, videoPath):
         self.videoPath = videoPath
         self.cap = cv2.VideoCapture(videoPath)
-        self.person_id_counter = 1 
-        self.people_count = 0
         self.people = {}
 
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)) # Frame genişliği
@@ -63,7 +59,6 @@ class PeopleCounter():
         #self.exit_line_y = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT) - 30
         self.exit_line_y = self.height - self.enter_line_y
 
-        self.offset = 6 # İnsanların çizgilerden geçerken hata payı
         self.counter_enter = 0 
         self.counter_exit = 0
 
@@ -220,8 +215,6 @@ if __name__ == "__main__":
             else:
                 people_counter.people[id].append((cx, cy))
             
-            
-
         cv2.imshow("Frame", frame)
         cv2.imshow("Threshold", threshold)
         cv2.imshow("Opening", people_counter.opening)
