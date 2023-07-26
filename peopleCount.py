@@ -175,8 +175,6 @@ if __name__ == "__main__":
         if not ret:
             break
 
-        height, width = frame.shape[:2]
-
         count += 1
         if count % 3 != 0:
             continue
