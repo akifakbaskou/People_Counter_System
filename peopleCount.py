@@ -106,8 +106,8 @@ class PeopleCounter():
 
     def drawPeopleCount(self, frame):
         # İnsan sayısını yaz
-        cv2.putText(frame, "Enter: {}".format(self.counter_enter), (310, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-        cv2.putText(frame, "Exit: {}".format(self.counter_exit), (310, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.putText(frame, "Enter: {}".format(self.counter_enter), (self.width - 80, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.putText(frame, "Exit: {}".format(self.counter_exit), (self.width - 80, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
     def findContours(self, frame, threshold):
 
