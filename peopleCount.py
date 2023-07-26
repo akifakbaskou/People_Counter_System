@@ -141,7 +141,7 @@ class PeopleCounter():
         return centroids
     
 if __name__ == "__main__":
-    video_path = "test_1.mp4"
+    video_path = 0
     people_counter = PeopleCounter(video_path)
     tracker = Tracker()
 
@@ -214,16 +214,16 @@ if __name__ == "__main__":
                 del people_counter.people[id]
             else:
                 people_counter.people[id].append((cx, cy))
-            
-        cv2.imshow("Frame", frame)
-        cv2.imshow("Threshold", threshold)
-        cv2.imshow("Opening", people_counter.opening)
-        cv2.imshow("Closing", people_counter.closing)
-        cv2.imshow("Dilation", people_counter.dilation)
-        cv2.imshow("Erosion", people_counter.erosion)
 
-        if cv2.waitKey(30) & 0xFF == ord('q'):
+        cv2.imshow("Frame", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        
+        # Enter ve Exit sayıları sadece değiştiğinde yazdır
+        if people_counter.counter_enter != 0 or people_counter.counter_exit != 0:
+            print("Enter: {}".format(people_counter.counter_enter))
+            print("Exit: {}".format(people_counter.counter_exit))
     
     people_counter.cap.release()
     cv2.destroyAllWindows()
