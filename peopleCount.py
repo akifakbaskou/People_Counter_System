@@ -19,7 +19,7 @@ class Tracker:
             same_object_detected = False
             for id, pt in self.center_points.items():
                 dist = math.hypot(cx - pt[0], cy - pt[1])
-                if dist < 100:
+                if dist < 300:
                     self.center_points[id] = (cx, cy)
                     objects_bbs_ids.append([x, y, w, h, id])
                     same_object_detected = True
@@ -42,7 +42,6 @@ class Tracker:
 
 class PeopleCounter():
     def __init__(self, videoPath):
-        self.videoPath = videoPath
         self.cap = cv2.VideoCapture(videoPath)
         self.people = {}
 
@@ -52,20 +51,20 @@ class PeopleCounter():
         # Frame üzerindeki çizgilerin y koordinatları 
         # Giriş çizgisi
         # Tüm videolar için aynı değerler kullanılabilir
-        self.enter_line_y = (self.height // 5)
+        self.enter_line_y = (self.height // 3)
 
         # Çıkış çizgisi
         # Tüm videolar için otomatik değer atanmalı
         #self.exit_line_y = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT) - 30
-        self.exit_line_y = self.height - self.enter_line_y
+        self.exit_line_y = self.height - self.enter_line_y - 80
 
         self.counter_enter = 0 
         self.counter_exit = 0
 
         self.fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=True) # shadows çıkarılabilir (fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False))
                                                          # backgroundsubstractora ait başka methodlarda kullanılabilir gmg , mog, mog2 vb.
-        self.min_contour_width = 10
-        self.min_contour_height = 50
+        self.min_contour_width = 40
+        self.min_contour_height = 100
         self.fgmask = None
         self.kernel = None
         self.opening = None
@@ -87,11 +86,11 @@ class PeopleCounter():
 
         self.fgmask = self.fgbg.apply(gray)
 
-        self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
-        self.opening = cv2.morphologyEx(self.fgmask, cv2.MORPH_OPEN, self.kernel, iterations=3)
+        self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6))
+        self.opening = cv2.morphologyEx(self.fgmask, cv2.MORPH_OPEN, self.kernel, iterations=1)
         self.erosion = cv2.erode(self.opening, self.kernel, iterations=3)
-        self.closing = cv2.morphologyEx(self.erosion, cv2.MORPH_CLOSE, self.kernel, iterations=1)
-        self.dilation = cv2.dilate(self.closing, self.kernel, iterations=2)
+        self.closing = cv2.morphologyEx(self.erosion, cv2.MORPH_CLOSE, self.kernel, iterations=6)
+        self.dilation = cv2.dilate(self.closing, self.kernel, iterations=10)
         _, threshold = cv2.threshold(self.dilation, 100, 255, cv2.THRESH_BINARY)
 
         return threshold
@@ -140,93 +139,98 @@ class PeopleCounter():
 
         return centroids
     
-if __name__ == "__main__":
-    video_path = "test_1.mp4"
-    people_counter = PeopleCounter(video_path)
-    tracker = Tracker()
+    def run(self):
+        video_path = "test_2.mp4"
+        people_counter = PeopleCounter(video_path)
+        tracker = Tracker()
 
-    count = 0
-    enter_line_y = 50
-    exit_line_y = 250
-    offset = 6
+        count = 0
+        enter_line_y = 50
+        exit_line_y = 250
+        offset = 15
 
-    def calcMovementDirection(people):
-        directions = {}
-        for id, people[id] in people.items():
-            if len(people[id]) >= 2:
-                y_diff = people[id][-2][1] - people[id][-1][1]
-                direction = np.subtract(people[id][-2], people[id][-1])
-                if direction[1] > 0 and y_diff > 0:
-                    directions[id] = "down"
-                elif direction[1] < 0 and y_diff < 0:
-                    directions[id] = "up"
+        def calcMovementDirection(people):
+            directions = {}
+            for id, people[id] in people.items():
+                if len(people[id]) >= 2:
+                    y_diff = people[id][-2][1] - people[id][-1][1]
+                    direction = np.subtract(people[id][-2], people[id][-1])
+                    if direction[1] > 0 and y_diff > 0:
+                        directions[id] = "down"
+                    elif direction[1] < 0 and y_diff < 0:
+                        directions[id] = "up"
+                    else:
+                        directions[id] = None
+            
+            return directions
+
+        while True:
+            ret, frame = people_counter.cap.read()
+            if not ret:
+                break
+
+            count += 1
+            if count % 3 != 0:
+                continue
+            
+            threshold = people_counter.filterMask(frame)
+            centroids = people_counter.findContours(frame, threshold)
+            people_counter.drawLines(frame)
+            people_counter.drawPeopleCount(frame)
+
+            list = []
+
+            for index, centroid in enumerate(centroids):
+                
+                # Merkez noktası alınan dikdörtgenin koordinatları
+                x1, y1 = centroid[0] - 30, centroid[1] - 30
+                x2, y2 = (x1 + 60), (y1 + 60)
+
+                list.append([x1,y1,x2,y2])
+
+            bbox_id = tracker.update(list)
+            for bbox in bbox_id:
+                x3, y3, x4, y4, id = bbox
+                cx = int((x3 + x4) / 2.0)
+                cy = int((y3 + y4) / 2.0)
+                cv2.circle(frame, (cx, cy), 2, (0, 0, 255), -1)
+                cv2.putText(frame, str(id), (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)               
+
+                # ID'ye göre insanların merkez noktasını tut 
+                if id not in people_counter.people:
+                    people_counter.people[id] = []
+                    people_counter.people[id].append((cx, cy))
+                
+                # İnsanların geçmiş merkez noktalarına göre hareket yönünü hesapla
+                directions = calcMovementDirection(people_counter.people)
+
+                # Yönlere göre sayacı arttır
+                if id in directions and directions[id] == "down" and cy < enter_line_y + offset:
+                    people_counter.counter_enter += 1
+                    del people_counter.people[id]
+                elif id in directions and directions[id] == "up" and exit_line_y - offset < cy:
+                    people_counter.counter_exit += 1
+                    del people_counter.people[id]
                 else:
-                    directions[id] = None
+                    people_counter.people[id].append((cx, cy))
+                
+            cv2.imshow("Frame", frame)
+            cv2.imshow("Threshold", threshold)
+            #cv2.imshow("Opening", people_counter.opening)
+            #cv2.imshow("Closing", people_counter.closing)
+            cv2.imshow("Dilation", people_counter.dilation)
+            cv2.imshow("Erosion", people_counter.erosion)
+
+            if cv2.waitKey(100) & 0xFF == ord('q'):
+                break
         
-        return directions
+        people_counter.cap.release()
+        cv2.destroyAllWindows()
 
-    while True:
-        ret, frame = people_counter.cap.read()
-        if not ret:
-            break
+if __name__ == "__main__":
 
-        count += 1
-        if count % 3 != 0:
-            continue
-        
-        threshold = people_counter.filterMask(frame)
-        centroids = people_counter.findContours(frame, threshold)
-        people_counter.drawLines(frame)
-        people_counter.drawPeopleCount(frame)
-
-        list = []
-
-        for index, centroid in enumerate(centroids):
-            
-            # Merkez noktası alınan dikdörtgenin koordinatları
-            x1, y1 = centroid[0] - 30, centroid[1] - 30
-            x2, y2 = (x1 + 60), (y1 + 60)
-
-            list.append([x1,y1,x2,y2])
-
-        bbox_id = tracker.update(list)
-        for bbox in bbox_id:
-            x3, y3, x4, y4, id = bbox
-            cx = int((x3 + x4) / 2.0)
-            cy = int((y3 + y4) / 2.0)
-            cv2.circle(frame, (cx, cy), 2, (0, 0, 255), -1)
-            cv2.putText(frame, str(id), (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)               
-
-            # ID'ye göre insanların merkez noktasını tut 
-            if id not in people_counter.people:
-                people_counter.people[id] = []
-                people_counter.people[id].append((cx, cy))
-            
-            # İnsanların geçmiş merkez noktalarına göre hareket yönünü hesapla
-            directions = calcMovementDirection(people_counter.people)
-
-            # Yönlere göre sayacı arttır
-            if id in directions and directions[id] == "down" and enter_line_y - offset < cy < enter_line_y + offset:
-                people_counter.counter_enter += 1
-                del people_counter.people[id]
-            elif id in directions and directions[id] == "up" and exit_line_y - offset < cy < exit_line_y + offset:
-                people_counter.counter_exit += 1
-                del people_counter.people[id]
-            else:
-                people_counter.people[id].append((cx, cy))
-            
-        cv2.imshow("Frame", frame)
-        cv2.imshow("Threshold", threshold)
-        cv2.imshow("Opening", people_counter.opening)
-        cv2.imshow("Closing", people_counter.closing)
-        cv2.imshow("Dilation", people_counter.dilation)
-        cv2.imshow("Erosion", people_counter.erosion)
-
-        if cv2.waitKey(30) & 0xFF == ord('q'):
-            break
-    
-    people_counter.cap.release()
-    cv2.destroyAllWindows()
+    people_counter = PeopleCounter(0)
+    people_counter.run()
 
 
 
