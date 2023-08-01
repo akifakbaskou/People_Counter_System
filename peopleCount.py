@@ -42,6 +42,7 @@ class Tracker:
 
 class PeopleCounter():
     def __init__(self, videoPath):
+        self.videoPath = videoPath
         self.cap = cv2.VideoCapture(videoPath)
         self.people = {}
 
@@ -140,7 +141,7 @@ class PeopleCounter():
         return centroids
     
     def run(self):
-        video_path = "test_2.mp4"
+        video_path = 0
         people_counter = PeopleCounter(video_path)
         tracker = Tracker()
 
